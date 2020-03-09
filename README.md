@@ -1,6 +1,6 @@
 # syf
 
-`syf` is a command line utility for downloading Grateful Dead soundboards.
+`syf` (steal your face) is a command line utility for downloading Grateful Dead soundboards.
 
 Available commands:
 
