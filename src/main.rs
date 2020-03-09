@@ -58,6 +58,8 @@ async fn list_shows() -> Result<(), reqwest::Error> {
 }
 
 async fn get_show(showname: &String) -> Result<(), reqwest::Error> {
+    println!("Attempting to fetch show: {}", showname);
+
     let title_selector =
         Selector::parse(r#"a[data-event-click-tracking="GenericNonCollection|ItemTile"]"#).unwrap();
 
@@ -104,9 +106,9 @@ async fn get_show(showname: &String) -> Result<(), reqwest::Error> {
 
     fs::create_dir(showname);
 
-    for (name, url) in names_urls {
-        println!("Downloading {}.ogg to ./{}", name, showname);
-        let path = format!("{}/{}.ogg", showname, name);
+    for (idx, (name, url)) in names_urls.iter().enumerate() {
+        println!("Downloading {}_{}.ogg", idx + 1, name);
+        let path = format!("{}/{}_{}.ogg", showname, idx + 1, name);
         let file = get(&url[..]).await?.bytes().await?;
         fs::write(path, file);
     }
