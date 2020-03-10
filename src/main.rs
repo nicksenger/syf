@@ -12,11 +12,15 @@ fn main() {
     if let Some(arg) = args.get(1) {
         match &arg[..] {
             "list" => {
-                Runtime::block_on(&mut runtime, list_shows());
+                Runtime::block_on(&mut runtime, get_shows(true));
             }
             "fetch" => {
                 if let Some(target) = args.get(2) {
-                    Runtime::block_on(&mut runtime, get_show(target));
+                    if let target = "all" {
+                        Runtime::block_on(&mut runtime, get_all_shows());
+                    } else {
+                        Runtime::block_on(&mut runtime, get_show(target));
+                    }
                 } else {
                     println!("Please specify a show to fetch or `all`");
                 }
@@ -32,8 +36,10 @@ fn main() {
     }
 }
 
-async fn list_shows() -> Result<(), reqwest::Error> {
+async fn get_shows(print: bool) -> Result<Vec<String>, reqwest::Error> {
     let title_selector = Selector::parse(r#"div[class="ttl"]"#).unwrap();
+
+    let mut all_boards: Vec<String> = vec![];
 
     for i in 0..174 {
         let uri = format!("https://archive.org/details/GratefulDead?and%5B%5D=subject%3A%22Soundboard%22&sort=date&page={}&scroll=1", i);
@@ -49,12 +55,17 @@ async fn list_shows() -> Result<(), reqwest::Error> {
             .collect();
 
         soundboards.dedup();
-        for sb in soundboards {
-            println!("{}", sb);
+
+        if print {
+            for show in &soundboards {
+                println!("{}", show);
+            }
         }
+
+        all_boards.extend(soundboards);
     }
 
-    Ok(())
+    Ok(all_boards)
 }
 
 async fn get_show(showname: &String) -> Result<(), reqwest::Error> {
@@ -107,11 +118,29 @@ async fn get_show(showname: &String) -> Result<(), reqwest::Error> {
     fs::create_dir(showname);
 
     for (idx, (name, url)) in names_urls.iter().enumerate() {
-        println!("Downloading {}_{}.ogg", idx + 1, name);
-        let path = format!("{}/{}_{}.ogg", showname, idx + 1, name);
-        let file = get(&url[..]).await?.bytes().await?;
-        fs::write(path, file);
+        let number = if idx < 9 {
+            format!("0{}", idx + 1)
+        } else {
+            format!("{}", idx + 1)
+        };
+        println!("Downloading {} - {}.ogg", number, name);
+        let path = format!("{}/{} - {}.ogg", showname, number, name);
+        let file = get(&url[..]).await?.bytes().await;
+        match file {
+            Ok(b) => {
+                fs::write(path, b);
+            }
+            Err(e) => eprintln!("got an error! {}", e),
+        };
     }
 
+    Ok(())
+}
+
+async fn get_all_shows() -> Result<(), reqwest::Error> {
+    let all_shows = get_shows(true).await?;
+    for show in all_shows {
+        get_show(&show).await;
+    }
     Ok(())
 }
